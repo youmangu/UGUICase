@@ -12,9 +12,14 @@ public class Circle : Image
     [SerializeField]
     private float showPercent = 1;
 
+    private List<Vector3> _vertexList;
+
     protected override void OnPopulateMesh(VertexHelper vh)
     {
         vh.Clear();
+
+        _vertexList = new List<Vector3>();
+
         float width = rectTransform.rect.width;
         float height = rectTransform.rect.height;
 
@@ -65,6 +70,7 @@ public class Circle : Image
             vertexTemp.position = posTemp + originPos;
             vertexTemp.uv0 = new Vector2(posTemp.x * convertRatio.x + uvCenter.x, posTemp.y * convertRatio.y + uvCenter.y);
             vh.AddVert(vertexTemp);
+            _vertexList.Add(posTemp + originPos);
         }
 
         int id = 1;
@@ -75,5 +81,59 @@ public class Circle : Image
         }
 
 
+    }
+
+    public override bool IsRaycastLocationValid(Vector2 screenPoint, Camera eventCamera)
+    {
+        Vector2 localPoint;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, screenPoint, eventCamera, out localPoint);
+
+        return IsValid(localPoint);
+    }
+
+    private bool IsValid(Vector2 localPoint)
+    {
+        return GetScrossPointNum(localPoint, _vertexList) % 2 == 1;
+    }
+
+    private int GetScrossPointNum(Vector2 localPoint, List<Vector3> vertexList)
+    {
+        Vector3 vert1 = Vector3.zero;
+        Vector3 vert2 = Vector3.zero;
+        int count = vertexList.Count;
+        int pointCount = 0;
+        for (int i = 0; i < count; i++)
+        {
+            vert1 = vertexList[i];
+            vert2 = vertexList[(i + 1) % count];
+            if (IsYInRange(localPoint, vert1, vert2))
+            {
+                if (localPoint.x < GetX(vert1, vert2, localPoint.y))
+                {
+                    pointCount++;
+                }
+            }
+        }
+
+        return pointCount;
+    }
+
+    private bool IsYInRange(Vector3 localPoint, Vector3 v1, Vector3 v2)
+    {
+        if (v1.y > v2.y)
+        {
+            return localPoint.y < v1.y && localPoint.y > v2.y;
+        }
+        else
+        {
+            return localPoint.y < v2.y && localPoint.y > v1.y;
+        }
+    }
+
+    private float GetX(Vector3 v1, Vector3 v2, float y)
+    {
+        // 直线公式  y = kx + b
+        float k = (v1.y - v2.y) / (v1.x - v2.x);
+        return v1.x + (y - v1.y) / k;
     }
 }
